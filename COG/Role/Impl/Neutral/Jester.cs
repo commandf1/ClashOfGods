@@ -30,7 +30,7 @@ public class Jester : CustomRole, IListener, IWinnable
     {
         var ejectionEvents = EventRecorder.Instance.GetEvents().Where(e => e is PlayerExileGameEvent);
         var matchedEvent =
-            ejectionEvents.FirstOrDefault(e => e.Player!.IsRole(this)); // select last exiled jester as winner
+            ejectionEvents.FirstOrDefault(e => e!.Player!.IsRole(this)); // select last exiled jester as winner
 
         if (matchedEvent == null) return;
 
@@ -60,7 +60,7 @@ public class Jester : CustomRole, IListener, IWinnable
         var allowReport = _allowReportDeadBody.GetBool();
 
         if (!allowMeeting && !victim)
-            return false; // Reject if meeting is unallowed (It's a meeting when victim is null)
+            return false; // Reject if meeting is not allowed (meeting when victim is null)
         if (!allowReport && victim) return false; // Reject if reporting is unallowed
         return true;
     }
