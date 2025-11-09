@@ -9,10 +9,12 @@ using COG.Rpc;
 using COG.UI.CustomOption.ValueRules;
 using COG.UI.CustomOption.ValueRules.Impl;
 using COG.Utils;
-using COG.Utils.WinAPI;
 using Reactor.Utilities;
 using UnityEngine;
-using Mode = COG.Utils.WinAPI.OpenFileDialogue.OpenFileMode;
+#if WINDOWS
+using COG.Utils.OSApi.Windows;
+using Mode = COG.Utils.OSApi.Windows.OpenFileDialogue.OpenFileMode;
+#endif
 
 // ReSharper disable InconsistentNaming
 
@@ -205,18 +207,26 @@ public sealed class CustomOption
         }
     }
 
-    public static void SavePresetWithDialogue()
+    public static void OnSavePresetButtonClicked()
     {
+#if WINDOWS
         var file = OpenFileDialogue.Display(Mode.Save, "Preset File(*.cfg)\0*.cfg\0\0");
         if (file.FilePath is null or "") return;
         SaveCurrentOption(file.FilePath);
+#elif ANDROID
+        // TODO: save preset to a fixed location
+#endif
     }
 
-    public static void LoadPresetWithDialogue()
+    public static void OnLoadPresetButtonClicked()
     {
+#if WINDOWS
         var file = OpenFileDialogue.Display(Mode.Open, "Preset File(*.cfg)\0*.cfg\0\0");
         if (file.FilePath is null or "") return;
         LoadOptionFromPreset(file.FilePath);
+#elif ANDROID
+
+#endif
     }
 
     public dynamic GetDynamicValue()

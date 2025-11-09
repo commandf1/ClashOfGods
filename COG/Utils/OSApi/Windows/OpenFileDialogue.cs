@@ -1,7 +1,8 @@
+#if WINDOWS
 using System;
 using System.Runtime.InteropServices;
 
-namespace COG.Utils.WinAPI;
+namespace COG.Utils.OSApi.Windows;
 
 public static class OpenFileDialogue
 {
@@ -107,3 +108,4 @@ public static class OpenFileDialogue
         public string? FileName { get; }
     }
 }
+#endif

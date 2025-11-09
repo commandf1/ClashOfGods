@@ -9,7 +9,7 @@ using COG.Config.Impl;
 using COG.Game.CustomWinner;
 using COG.Game.Events;
 using COG.Listener;
-using COG.Listener.Event.Impl.Game;
+using COG.Listener.Event.Impl.Game.Record;
 using COG.Rpc;
 using COG.UI.CustomOption;
 using COG.UI.CustomOption.ValueRules;
@@ -95,21 +95,6 @@ public class CustomRole
         Name = GetContextFromLanguage("name");
         ShortDescription = GetContextFromLanguage("description");
         ActionNameContext = LanguageConfig.Instance.GetHandler("action");
-
-        var vanillaType = CampType switch
-        {
-            CampType.Crewmate => RoleTeamTypes.Crewmate,
-            CampType.Impostor => RoleTeamTypes.Impostor,
-            CampType.Neutral => (RoleTeamTypes)99,
-            _ => (RoleTeamTypes)100
-        };
-        // ReSharper disable once Unity.IncorrectMonoBehaviourInstantiation
-        VanillaRole = new RoleBehaviour
-        {
-            TeamType = vanillaType,
-            Role = (RoleTypes)(Id + 100),
-            StringName = StringNames.None
-        };
 
         if (this is IWinnable winnable) CustomWinnerManager.GetManager().RegisterCustomWinnable(winnable);
 
@@ -219,7 +204,7 @@ public class CustomRole
     public static Action<CustomRole, CustomButton> OnRoleAbilityUsed { get; set; } = (_, button) =>
     {
         if (button == null) return;
-        EventRecorder.Instance.Record(new UseAbilityGameEvent(PlayerControl.LocalPlayer.GetPlayerData(), button));
+        EventRecorder.Instance.RpcRecord(new UseAbilityGameEvent(PlayerControl.LocalPlayer.GetPlayerData(), button));
     };
 
     public ReadOnlyCollection<PlayerControl> Players =>
@@ -234,12 +219,18 @@ public class CustomRole
     public ReadOnlyCollection<CustomOption> RoleOptions =>
         new(AllOptions.Where(o => o != RoleNumberOption && o != RoleChanceOption).ToList());
 
-    public RoleBehaviour VanillaRole { get; }
-
-    public RoleRulesCategory VanillaCategory => new()
+    public RoleBehaviour VanillaRole => new()
     {
-        AllGameSettings = RoleOptions.Select(o => o.ToVanillaOptionData()).ToList().ToIl2CppList(),
-        Role = VanillaRole
+        TeamType = CampType switch
+        {
+            CampType.Crewmate => RoleTeamTypes.Crewmate,
+            CampType.Impostor => RoleTeamTypes.Impostor,
+            CampType.Neutral => (RoleTeamTypes)99,
+            _ => (RoleTeamTypes)100
+        },
+        Role = (RoleTypes)(Id + 100),
+        StringName = StringNames.None,
+        AllGameSettings = RoleOptions.Select(o => o.ToVanillaOptionData()).ToIl2CppList()
     };
 
     public KillButtonSetting DefaultKillButtonSetting { get; }

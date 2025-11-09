@@ -1,4 +1,3 @@
-using System;
 using System.Linq;
 using COG.Game.Events;
 using COG.Listener.Event.Impl.Player;
@@ -83,11 +82,7 @@ public class RpcListener : IListener
 
             case KnownRpc.Revive:
             {
-                // ��Rpc�ж���PlayerControl
-                var target = reader.ReadNetObject<PlayerControl>();
-
-                // ����Ŀ�����
-                target.Revive();
+                reader.ReadNetObject<PlayerControl>().Revive();
                 break;
             }
 
@@ -138,33 +133,24 @@ public class RpcListener : IListener
                 break;
             }
 
-            case KnownRpc.SyncGameEvent:
-            {
-                var eventName = reader.ReadString();
-                var undeserializedPlayerData = reader.ReadBytesAndSize();
-                var serializedPlayerData = undeserializedPlayerData.DeserializeToData<SerializablePlayerData>();
-
-                var matchedEventType = typeof(Main).Assembly.GetTypes().FirstOrDefault(t =>
-                    t.IsSubclassOf(typeof(NetworkedGameEventBase)) && !t.IsAbstract && t.Name == eventName);
-
-                if (matchedEventType == null)
-                {
-                    Main.Logger.LogError($"Unknown event type: {eventName}");
-                    return;
-                }
-
-                dynamic instance = Activator.CreateInstance(matchedEventType, serializedPlayerData)!;
-                instance.Deserialize(reader);
-
-                Main.Logger.LogInfo("Deserialized networked game event: " + eventName);
-
-                break;
-            }
-
             case KnownRpc.AdvancedMurder:
             {
                 @event.Player.MurderAdvanced(AdvancedKillOptions.Deserialize(reader));
+                break;
+            }
 
+            case KnownRpc.SyncGameEvent:
+            {
+                var id = reader.ReadString();
+                dynamic? sender = INetworkedGameEventSender.AllSenders.FirstOrDefault(s => s.Id == id);
+                
+                if (sender == null)
+                {
+                    Main.Logger.LogWarning("Null serializer while receiving game event");
+                    break;
+                }
+
+                EventRecorder.Instance.Record(sender.Deserialize(reader));
                 break;
             }
         }

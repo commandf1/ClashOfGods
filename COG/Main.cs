@@ -1,11 +1,7 @@
 global using HarmonyLib;
 global using Hazel;
-global using Object = UnityEngine.Object;
 global using GitInfo = ThisAssembly.Git;
-using System;
-using System.IO;
-using System.Linq;
-using System.Text;
+global using Object = UnityEngine.Object;
 using BepInEx;
 using BepInEx.Unity.IL2CPP;
 using COG.Command;
@@ -15,7 +11,9 @@ using COG.Config.Impl;
 using COG.Constant;
 using COG.Game.CustomWinner;
 using COG.Game.CustomWinner.Winnable;
+using COG.Game.Events;
 using COG.Listener;
+using COG.Listener.Event.Impl.Game.Record;
 using COG.Listener.Impl;
 using COG.Patch;
 using COG.Plugin;
@@ -30,12 +28,18 @@ using COG.UI.ClientOption;
 using COG.UI.ClientOption.Impl;
 using COG.Utils;
 using COG.Utils.Version;
-using COG.Utils.WinAPI;
 using Reactor;
 using Reactor.Networking;
 using Reactor.Networking.Attributes;
+using System;
+using System.IO;
+using System.Linq;
+using System.Text;
 using UnityEngine.SceneManagement;
-using OpenFileMode = COG.Utils.WinAPI.OpenFileDialogue.OpenFileMode;
+#if WINDOWS
+using COG.Utils.OSApi.Windows;
+using OpenFileMode = COG.Utils.OSApi.Windows.OpenFileDialogue.OpenFileMode;
+#endif
 
 namespace COG;
 
@@ -187,9 +191,50 @@ public partial class Main : BasePlugin
             new SpeedBooster()
         });
 
+        INetworkedGameEventSender.AllSenders.AddRange(new[]
+        {
+            new UseAbilityEventSender()
+        });
+
         // Register mod options
         ClientOptionManager.GetManager().RegisterClientOptions(new IClientOption[]
         {
+            new ToggleClientOption("main.unload-mod.name",
+                false,
+                _ =>
+                {
+                    DestroyableSingleton<OptionsMenuBehaviour>.Instance.Close();
+                    if (GameStates.InRealGame || GameStates.InLobby)
+                    {
+                        GameUtils.Popup?.Show(LanguageConfig.Instance.UnloadModInGameErrorMsg);
+                        return false;
+                    }
+
+                    Unload();
+                    GameUtils.Popup?.Show(LanguageConfig.Instance.UnloadModSuccessfulMessage);
+                    return false;
+                }),
+            CheckEndCriteriaPatch.NoEndGameButton = new ToggleClientOption("no-end-game.name",
+                false,
+                _ =>
+                {
+                    DestroyableSingleton<OptionsMenuBehaviour>.Instance.Close();
+                    if (GameStates.InRealGame)
+                    {
+                        GameUtils.Popup?.Show(LanguageConfig.Instance.NoEndGameErrorMessage);
+                        return false;
+                    }
+
+                    if(CheckEndCriteriaPatch.NoEndGame)
+                    {
+                        CheckEndCriteriaPatch.NoEndGame = false;
+                    }
+                    else CheckEndCriteriaPatch.NoEndGame = true;
+
+                    GameUtils.Popup?.Show(CheckEndCriteriaPatch.NoEndGame?LanguageConfig.Instance.NoEndGameInfoMessage:LanguageConfig.Instance.NoEndGameOff);
+                    return false;
+                }),
+#if WINDOWS
             new ToggleClientOption("main.load-custom-lang",
                 false,
                 _ =>
@@ -210,22 +255,8 @@ public partial class Main : BasePlugin
                     SceneManager.LoadScene(Constants.MAIN_MENU_SCENE);
                     return false;
                 }),
-            new ToggleClientOption("main.unload-mod.name",
-                false,
-                _ =>
-                {
-                    DestroyableSingleton<OptionsMenuBehaviour>.Instance.Close();
-                    if (GameStates.InRealGame || GameStates.InLobby)
-                    {
-                        GameUtils.Popup?.Show(LanguageConfig.Instance.UnloadModInGameErrorMsg);
-                        return false;
-                    }
-
-                    Unload();
-                    GameUtils.Popup?.Show(LanguageConfig.Instance.UnloadModSuccessfulMessage);
-                    return false;
-                }),
-            new ToggleClientOption("hotkey.name",
+#endif
+             new ToggleClientOption("hotkey.name",
                 false,
                 _ =>
                 {

@@ -1,4 +1,6 @@
 ﻿using COG.Listener.Event.Impl.Game;
+using COG.Listener.Event.Impl.Game.Record;
+using COG.Rpc;
 using COG.Utils;
 using COG.Utils.Coding;
 using System.Collections.Generic;
@@ -37,15 +39,20 @@ public class EventRecorder
         }
     }
 
-    public void DisableRecordOnceDeathEvent(CustomPlayerData player)
+    [FixMe("BUG")]
+    public void RpcRecord<T>(NetworkedGameEventBase<T> gameEvent) where T : INetworkedGameEventSender, new()
     {
-
+        var writer = RpcWriter.Start(KnownRpc.SyncGameEvent);
+        dynamic sender = gameEvent.EventSender;
+        writer.Write(sender.Id);
+        //sender.Serialize(writer, gameEvent);
+        writer.Finish();
     }
 
     public static void ResetAll()
     {
         Instance = null!;
-        Main.Logger.LogInfo("Event data has been reset.");
+        Main.Logger.LogInfo("Event data have been reset.");
     }
 }
 
@@ -113,7 +120,7 @@ public static class GameEventPatch // not use listener for flexibility in patchi
     [HarmonyPostfix]
     private static void StartGamePatch()
     {
-        EventRecorder.Instance.Record(new GameStartsEvent());
+        EventRecorder.Instance.Record(new StartGameEvent());
     }
 
     [HarmonyPatch(typeof(PlayerControl), nameof(PlayerControl.Revive))]
